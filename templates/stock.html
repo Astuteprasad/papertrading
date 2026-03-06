@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ symbol }} Stock</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #0f172a;
+            color: white;
+        }
+
+        nav {
+            background: #020617;
+            padding: 12px 20px;
+        }
+
+        nav a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .top-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-box {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: #020617;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+        }
+
+        .stat-card strong {
+            color: #94a3b8;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            background: #020617;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+        }
+
+        .buttons {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 18px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .buy-btn {
+            background: #22c55e;
+            color: white;
+        }
+
+        .sell-btn {
+            background: #ef4444;
+            color: white;
+        }
+
+        .options-btn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        canvas {
+            height: 300px !important;
+        }
+
+        #change {
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/dashboard">Dashboard</a>
+</nav>
+
+<div class="container">
+
+    <div class="top-section">
+        <h1>{{ symbol }}</h1>
+
+        <div class="price-box">
+            $<span id="price">{{ price }}</span>
+            <span id="change"></span>
+        </div>
+    </div>
+
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <strong>High</strong>
+            <div id="high">--</div>
+        </div>
+
+        <div class="stat-card">
+            <strong>Low</strong>
+            <div id="low">--</div>
+        </div>
+
+        <div class="stat-card">
+            <strong>Volume</strong>
+            <div id="volume">--</div>
+        </div>
+
+        <div class="stat-card">
+            <strong>Open</strong>
+            <div id="open">--</div>
+        </div>
+
+    </div>
+
+
+    <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+
+    <div class="buttons">
+        <button class="buy-btn" onclick="buyStock()">Buy</button>
+        <button class="sell-btn" onclick="sellStock()">Sell</button>
+
+        <a href="/trade-options/{{ symbol }}">
+            <button class="options-btn">Trade Options</button>
+        </a>
+    </div>
+
+</div>
+
+
+<script>
+
+let chart;
+
+let prices = [];
+let labels = [];
+
+let high = null;
+let low = null;
+let openPrice = null;
+
+
+function createChart(){
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+
+    chart = new Chart(ctx, {
+
+        type: 'line',
+
+        data: {
+
+            labels: labels,
+
+            datasets: [{
+
+                label: 'Price',
+
+                data: prices,
+
+                borderColor: '#22c55e',
+
+                backgroundColor: 'rgba(34,197,94,0.15)',
+
+                borderWidth: 2,
+
+                fill: true,
+
+                tension: 0.3
+
+            }]
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: { display: false }
+
+            },
+
+            scales: {
+
+                x: {
+
+                    grid: {
+                        color: "#1e293b"
+                    },
+
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+
+                },
+
+                y: {
+
+                    grid: {
+                        color: "#1e293b"
+                    },
+
+                    title: {
+                        display: true,
+                        text: 'Price ($)'
+                    }
+
+                }
+
+            }
+
+        }
+
+    });
+
+}
+
+
+
+async function fetchPrice(){
+
+    try{
+
+        const response = await fetch('/api/prices');
+
+        const data = await response.json();
+
+        const price = data["{{ symbol }}"];
+
+
+        document.getElementById('price').innerText = price;
+
+
+        if(openPrice === null){
+            openPrice = price;
+        }
+
+
+        if(high === null || price > high){
+            high = price;
+        }
+
+        if(low === null || price < low){
+            low = price;
+        }
+
+
+        document.getElementById('high').innerText = high;
+        document.getElementById('low').innerText = low;
+        document.getElementById('open').innerText = openPrice;
+
+
+        let change = ((price - openPrice) / openPrice) * 100;
+        let changeEl = document.getElementById('change');
+
+        changeEl.innerText = " (" + change.toFixed(2) + "%)";
+        changeEl.style.color = change >= 0 ? "#22c55e" : "#ef4444";
+
+
+        document.getElementById('volume').innerText =
+            Math.floor(Math.random() * 1000000).toLocaleString();
+
+
+        let now = new Date().toLocaleTimeString();
+
+        labels.push(now);
+        prices.push(price);
+
+
+        if(prices.length > 40){
+            prices.shift();
+            labels.shift();
+        }
+
+
+        chart.update();
+
+    }
+
+    catch(error){
+        console.error(error);
+    }
+
+}
+
+
+
+function buyStock(){
+    alert("Buy order placed (paper trade)");
+}
+
+
+function sellStock(){
+    alert("Sell order placed (paper trade)");
+}
+
+
+createChart();
+fetchPrice();
+setInterval(fetchPrice, 2000);
+
+</script>
+
+</body>
+</html> 

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trade Options</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left Panel */
+        .left {
+            width: 40%;
+            background: #1e1e1e;
+            padding: 20px;
+            border-right: 1px solid #2a2a2a;
+            overflow-y: auto;
+        }
+
+        .search {
+            padding: 10px;
+            width: 100%;
+            border-radius: 6px;
+            border: none;
+            background: #333;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .option {
+            background: #2a2a2a;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .option:hover {
+            background: #38414a;
+        }
+
+        .option h4 {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .option small {
+            color: #aaa;
+        }
+
+        /* Right Panel */
+        .right {
+            flex: 1;
+            padding: 20px;
+            background: #1e1e1e;
+        }
+
+        #details {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .metrics {
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .metrics p {
+            margin: 5px 0;
+        }
+
+        .metrics .title {
+            font-weight: bold;
+        }
+
+        #actions {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            margin-right: 15px;
+            width: 150px;
+            font-size: 16px;
+        }
+
+        .buy { background: #1abc9c; color: white; }
+        .sell { background: #e74c3c; color: white; }
+
+        canvas {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Option Chain -->
+    <div class="left">
+        <input id="search" class="search" placeholder="Search symbol..." onkeyup="filterOptions()">
+        <div id="optionChain"></div>
+    </div>
+
+    <!-- Details + Payoff Chart -->
+    <div class="right">
+        <div id="details">Select an option to view details</div>
+
+        <div id="actions" style="display:none;">
+            <button class="btn buy">Buy</button>
+            <button class="btn sell">Sell</button>
+        </div>
+
+        <div class="metrics">
+            <p class="title">Max Profit: <span id="maxProfit">-</span></p>
+            <p class="title">Max Loss: <span id="maxLoss">-</span></p>
+            <p class="title">Breakeven: <span id="breakeven">-</span></p>
+        </div>
+
+        <canvas id="chart"></canvas>
+    </div>
+
+</div>
+
+<script>
+// Sample option data
+const options = [
+    { name: "CALL 180", premium: 12, oi: 1500, volume: 300, strike: 180 },
+    { name: "PUT 180", premium: 9, oi: 1200, volume: 280, strike: 180 },
+    { name: "CALL 185", premium: 8, oi: 900, volume: 210, strike: 185 },
+    { name: "PUT 185", premium: 6, oi: 1100, volume: 260, strike: 185 },
+    { name: "CALL 190", premium: 5, oi: 700, volume: 180, strike: 190 },
+];
+
+const chain = document.getElementById("optionChain");
+const details = document.getElementById("details");
+const actions = document.getElementById("actions");
+const ctx = document.getElementById("chart").getContext("2d");
+let chart;
+
+// Render option chain
+function renderChain(data = options) {
+    chain.innerHTML = "";
+
+    data.forEach(opt => {
+        const div = document.createElement("div");
+        div.className = "option";
+        div.innerHTML = `
+            <h4>${opt.name}</h4>
+            <small>Premium: ₹${opt.premium} | OI: ${opt.oi}</small>
+        `;
+        div.onclick = () => loadDetails(opt);
+        chain.appendChild(div);
+    });
+}
+
+// Initial render
+renderChain();
+
+// Search filter
+function filterOptions() {
+    const term = document.getElementById("search").value.toLowerCase();
+    const filtered = options.filter(o => o.name.toLowerCase().includes(term));
+    renderChain(filtered);
+}
+
+// Load details + payoff chart
+function loadDetails(opt) {
+    details.innerHTML = `
+        <h3>${opt.name}</h3>
+        <p>Premium: ₹${opt.premium}</p>
+        <p>Strike: ${opt.strike}</p>
+    `;
+
+    actions.style.display = "block";
+
+    // Metrics
+    const maxLoss = -(opt.premium * 100);
+    const breakeven = opt.name.includes("CALL")
+        ? opt.strike + opt.premium
+        : opt.strike - opt.premium;
+
+    document.getElementById("maxProfit").innerText = "Unlimited (Call)";
+    document.getElementById("maxLoss").innerText = maxLoss.toFixed(2);
+    document.getElementById("breakeven").innerText = breakeven.toFixed(2);
+
+    // Payoff calculation
+    const prices = [];
+    const profits = [];
+
+    const start = opt.strike - 20;
+    const end = opt.strike + 20;
+
+    for (let p = start; p <= end; p++) {
+        prices.push(p);
+
+        let profit;
+
+        if (opt.name.includes("CALL")) {
+            profit = Math.max(0, p - opt.strike) - opt.premium;
+        } else {
+            profit = Math.max(0, opt.strike - p) - opt.premium;
+        }
+
+        profits.push(profit);
+    }
+
+    const data = {
+        labels: prices,
+        datasets: [{
+            label: "Payoff",
+            data: profits,
+            borderColor: "#1abc9c",
+            fill: false,
+            tension: 0.1
+        }]
+    };
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data
+    });
+}
+</script>
+
+</body>
+</html> 

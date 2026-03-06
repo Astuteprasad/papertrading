@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Strategy Builder</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+nav{
+    background:#020617;
+    padding:15px 30px;
+}
+
+nav a{
+    color:#38bdf8;
+    text-decoration:none;
+    margin-right:15px;
+}
+
+.container{
+    padding:30px;
+}
+
+.layout{
+    display:grid;
+    grid-template-columns:350px 1fr;
+    gap:30px;
+}
+
+.panel{
+    background:#020617;
+    padding:20px;
+    border-radius:8px;
+}
+
+.leg{
+    border:1px solid #1e293b;
+    padding:12px;
+    margin-bottom:12px;
+    border-radius:6px;
+}
+
+input,select{
+    width:100%;
+    margin-top:6px;
+    margin-bottom:6px;
+    padding:6px;
+    background:#0f172a;
+    border:1px solid #334155;
+    color:white;
+}
+
+button{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.add-btn{
+    background:#22c55e;
+    color:white;
+}
+
+.calc-btn{
+    background:#3b82f6;
+    color:white;
+}
+
+.save-btn{
+    background:#f59e0b;
+    color:black;
+}
+
+.chart-box{
+    background:#020617;
+    padding:20px;
+    border-radius:8px;
+}
+
+canvas{
+    height:420px!important;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav>
+<a href="/dashboard">Dashboard</a>
+<a href="/strategy">Strategies</a>
+</nav>
+
+<div class="container">
+
+<h2>Options Strategy Builder</h2>
+
+<div class="layout">
+
+<!-- LEFT PANEL -->
+
+<div class="panel">
+
+<h3>Strategy Legs</h3>
+
+<button class="add-btn" onclick="addLeg()">+ Add Leg</button>
+
+<div id="legs"></div>
+
+<br>
+
+<button class="calc-btn" onclick="calculateStrategy()">Calculate</button>
+<button class="save-btn" onclick="saveStrategy()">Save</button>
+
+</div>
+
+
+<!-- RIGHT PANEL -->
+
+<div class="chart-box">
+
+<h3>Payoff Chart</h3>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let chartInstance=null
+let autoTimer=null
+
+// =============================
+// INIT EMPTY CHART
+// =============================
+
+function initChart(){
+
+const ctx=document.getElementById("chart")
+
+chartInstance=new Chart(ctx,{
+
+type:"line",
+
+data:{
+labels:[],
+datasets:[{
+label:"Strategy P&L",
+data:[],
+borderWidth:3,
+pointRadius:0,
+fill:true,
+backgroundColor:"rgba(34,197,94,0.15)",
+borderColor:"#38bdf8"
+}]
+},
+
+options:{
+responsive:true,
+
+interaction:{
+mode:"index",
+intersect:false
+},
+
+plugins:{
+legend:{display:false}
+},
+
+scales:{
+x:{
+grid:{color:"#1e293b"},
+title:{display:true,text:"Underlying Price"}
+},
+
+y:{
+grid:{color:"#1e293b"},
+title:{display:true,text:"Profit / Loss"}
+}
+}
+
+}
+
+})
+
+}
+
+// =============================
+// AUTO CALC
+// =============================
+
+function triggerAutoCalculate(){
+clearTimeout(autoTimer)
+autoTimer=setTimeout(calculateStrategy,400)
+}
+
+// =============================
+// ADD LEG
+// =============================
+
+function addLeg(){
+
+const html=`
+
+<div class="leg">
+
+<select class="type" onchange="triggerAutoCalculate()">
+<option value="CALL">Call</option>
+<option value="PUT">Put</option>
+</select>
+
+<select class="position" onchange="triggerAutoCalculate()">
+<option value="BUY">Buy</option>
+<option value="SELL">Sell</option>
+</select>
+
+<input type="number" class="strike" placeholder="Strike" oninput="triggerAutoCalculate()">
+
+<input type="number" class="premium" placeholder="Premium" oninput="triggerAutoCalculate()">
+
+<input type="number" class="quantity" placeholder="Qty" oninput="triggerAutoCalculate()">
+
+<button onclick="this.parentElement.remove(); triggerAutoCalculate()">Remove</button>
+
+</div>
+`
+
+document.getElementById("legs").insertAdjacentHTML("beforeend",html)
+
+triggerAutoCalculate()
+
+}
+
+// =============================
+// COLLECT LEGS
+// =============================
+
+function collectLegs(){
+
+const legs=[]
+
+document.querySelectorAll(".leg").forEach(leg=>{
+
+const strike=leg.querySelector(".strike").value
+const premium=leg.querySelector(".premium").value
+const quantity=leg.querySelector(".quantity").value
+
+if(!strike || !premium || !quantity)return
+
+legs.push({
+type:leg.querySelector(".type").value,
+position:leg.querySelector(".position").value,
+strike:strike,
+premium:premium,
+quantity:quantity
+})
+
+})
+
+return legs
+
+}
+
+// =============================
+// CALCULATE
+// =============================
+
+function calculateStrategy(){
+
+const legs=collectLegs()
+
+if(legs.length===0)return
+
+fetch("/api/calculate_strategy",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({legs:legs})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+chartInstance.data.labels=data.spot
+chartInstance.data.datasets[0].data=data.pnl
+
+chartInstance.update()
+
+})
+
+}
+
+// =============================
+// SAVE
+// =============================
+
+function saveStrategy(){
+
+const legs=collectLegs()
+
+if(legs.length===0){
+alert("Add legs first")
+return
+}
+
+const name=prompt("Strategy name")
+
+if(!name)return
+
+fetch("/api/save_strategy",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({name:name,legs:legs})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>alert(data.message))
+
+}
+
+// =============================
+// START
+// =============================
+
+initChart()
+
+</script>
+
+</body>
+
+</html>

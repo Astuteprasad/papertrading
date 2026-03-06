@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trading Dashboard</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family: Arial;
+    background:#0f172a;
+    color:white;
+}
+
+/* Navbar */
+
+nav{
+    background:#020617;
+    padding:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-bottom:1px solid #1e293b;
+}
+
+.nav-links a{
+    color:#cbd5f5;
+    margin-right:20px;
+    text-decoration:none;
+    font-weight:500;
+}
+
+.nav-links a:hover{
+    color:white;
+}
+
+/* Container */
+
+.container{
+    padding:30px;
+}
+
+/* Cards */
+
+.card{
+    background:#020617;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
+    border:1px solid #1e293b;
+}
+
+/* Table */
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#1e293b;
+    padding:12px;
+    text-align:left;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #1e293b;
+}
+
+tr:hover{
+    background:#1e293b;
+}
+
+/* Price colors */
+
+.green{
+    color:#22c55e;
+}
+
+.red{
+    color:#ef4444;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav>
+
+<div><b>TradeX</b></div>
+
+<div class="nav-links">
+<a href="/dashboard">Dashboard</a>
+<a href="/options">Options</a>
+<a href="/strategy">Strategy</a>
+<a href="/portfolio">Portfolio</a>
+<a href="/logout">Logout</a>
+</div>
+
+</nav>
+
+
+<div class="container">
+
+<div class="card">
+<h2>Welcome {{ user.username }}</h2>
+<p>Risk Level: <b>{{ user.risk_level }}</b></p>
+</div>
+
+
+<div class="card">
+
+<h2>Live Market</h2>
+
+<table id="priceTable">
+
+<thead>
+<tr>
+<th>Stock</th>
+<th>Price</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+let previousPrices = {}
+
+async function fetchPrices() {
+
+    const response = await fetch('/api/prices');
+    const data = await response.json();
+
+    const tbody = document.querySelector("#priceTable tbody");
+    tbody.innerHTML = "";
+
+    for (let stock in data){
+
+        let price = data[stock]
+        let color = ""
+
+        if(previousPrices[stock]){
+            if(price > previousPrices[stock]){
+                color = "green"
+            }else if(price < previousPrices[stock]){
+                color = "red"
+            }
+        }
+
+        let row = `
+        <tr onclick="window.location='/stock/${stock}'" style="cursor:pointer;">
+        <td>${stock}</td>
+        <td class="${color}">${price}</td>
+        </tr>
+        `
+
+        tbody.innerHTML += row
+        previousPrices[stock] = price
+    }
+
+}
+
+setInterval(fetchPrices,2000)
+fetchPrices()
+
+</script>
+
+</body>
+</html>

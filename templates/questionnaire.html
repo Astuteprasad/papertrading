@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Investor Questionnaire</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:#020617;
+padding:30px;
+border-radius:12px;
+width:350px;
+border:1px solid #1e293b;
+}
+
+h2{
+text-align:center;
+}
+
+label{
+display:block;
+margin-top:12px;
+}
+
+select{
+width:100%;
+padding:10px;
+border-radius:6px;
+border:1px solid #334155;
+background:#020617;
+color:white;
+}
+
+button{
+margin-top:20px;
+width:100%;
+padding:12px;
+background:#22c55e;
+border:none;
+border-radius:6px;
+font-weight:bold;
+cursor:pointer;
+}
+
+button:hover{
+background:#16a34a;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Investor Questionnaire</h2>
+
+<form method="post">
+
+<label>Income Level</label>
+<select name="income" required>
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+</select>
+
+<label>Purpose</label>
+<select name="purpose" required>
+<option value="growth">Growth</option>
+<option value="income">Income</option>
+<option value="speculation">Speculation</option>
+</select>
+
+<label>Experience</label>
+<select name="experience" required>
+<option value="beginner">Beginner</option>
+<option value="intermediate">Intermediate</option>
+<option value="expert">Expert</option>
+</select>
+
+<label>Risk Level</label>
+<select name="risk" required>
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+</select>
+
+<button type="submit">Submit</button>
+
+</form>
+
+</div>
+
+</body>
+</html>
